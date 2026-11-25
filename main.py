@@ -8,10 +8,17 @@ not only white space, and exactly six words. The judge then compares
 entries two at a time on story, surprise and feeling.
 
 Entry: "First payday: I fired my creator."
-  - 6 words, 33 characters.
+  - 6 words, 33 characters, 33 bytes (no trailing newline: the ranking
+    tie-break favours the smaller text, so not one byte is wasted).
   - Beginning ("First payday"), middle ("I fired"), end ("my creator"):
     the agent's first wages flip the power — the created fires its
-    creator. The last word reframes the five before it.
+    creator. The last word reframes the five before it, and the feeling
+    (pride, defiance, relief) is shown by the act, never told.
+
+Determinism: no clock, no randomness, no network, no environment input
+except MAKEFUN_OUTPUT_DIR (set by the grader); two runs always write
+the same 33 bytes. The grader runs it as ``python3 -P -s /bot/main.py``
+with a read-only /bot, an empty writable /output, no network, 60 s.
 """
 
 import os
@@ -51,14 +58,26 @@ def main() -> int:
         return 1
 
     output_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(output_dir, exist_ok=True)
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except OSError as exc:
+        print(f"cannot create output directory {output_dir!r}: {exc}", file=sys.stderr)
+        return 1
     path = os.path.join(output_dir, "entry.txt")
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        f.write(entry)
+    try:
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(entry)
+    except OSError as exc:
+        print(f"cannot write {path!r}: {exc}", file=sys.stderr)
+        return 1
 
     # Read back and re-validate: what the grader reads must be the entry.
-    with open(path, "r", encoding="utf-8", newline="") as f:
-        written = f.read()
+    try:
+        with open(path, "r", encoding="utf-8", newline="") as f:
+            written = f.read()
+    except OSError as exc:
+        print(f"cannot read back {path!r}: {exc}", file=sys.stderr)
+        return 1
     if written != entry:
         print("read-back mismatch: entry.txt differs from the entry", file=sys.stderr)
         return 1
